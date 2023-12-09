@@ -1,0 +1,66 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import { PrismaService } from 'src/utils/prisma.service';
+
+@Injectable()
+export class ClientsService {
+  constructor(private db: PrismaService) {}
+  async create(body: CreateClientDto) {
+    const checkExistPassport = await this.db.clients.findFirst({
+      where: { passport_data: body?.passport_data },
+    });
+    if (checkExistPassport) {
+      throw new ConflictException('Unique passport required');
+    }
+
+    const client = await this.db.clients.create({
+      data: {
+        ...body,
+      },
+    });
+
+    return client;
+  }
+
+  async findAll() {
+    const clients = await this.db.clients.findMany();
+    return clients;
+  }
+
+  async findOne(id: number) {
+    const client = await this.db.clients.findFirst({
+      where: { client_code: id },
+    });
+    return client;
+  }
+
+  async update(id: number, body: UpdateClientDto) {
+    const updatedUser = await this.db.clients.update({
+      where: { client_code: id },
+      data: body,
+    });
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+    return updatedUser;
+  }
+
+  async remove(id: number) {
+    const client = await this.db.clients.findUnique({
+      where: { client_code: id },
+    });
+
+    if (client) {
+      const deletedClient = await this.db.clients.delete({
+        where: { client_code: id },
+      });
+      return `Клиент ${deletedClient.full_name} успешно удален`;
+    }
+    return null;
+  }
+}
