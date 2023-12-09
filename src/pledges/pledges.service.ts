@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePledgeDto } from './dto/create-pledge.dto';
 import { UpdatePledgeDto } from './dto/update-pledge.dto';
 import { PrismaService } from 'src/utils/prisma.service';
@@ -29,27 +33,35 @@ export class PledgesService {
   }
 
   async update(id: number, body: UpdatePledgeDto) {
-    const updatedUser = await this.db.pledges.update({
+    const updatedPledge = await this.db.pledges.update({
       where: { pledge_code: id },
       data: body,
     });
-    if (!updatedUser) {
-      throw new NotFoundException('User not found');
+    if (!updatedPledge) {
+      throw new NotFoundException('Pledge not found');
     }
-    return updatedUser;
+    return updatedPledge;
   }
 
   async remove(id: number) {
-    const client = await this.db.pledges.findUnique({
+    const pledge = await this.db.pledges.findUnique({
       where: { pledge_code: id },
+      include: { contracts: true },
     });
 
-    if (client) {
-      const deletedClient = await this.db.pledges.delete({
+    if (pledge) {
+      if (pledge.contracts.length > 0) {
+        throw new ConflictException(
+          `Товар ${pledge.description} имеет активные контракты. Его нельзя удалить. (Сначала удалите контракты связанные с этим товаром)`,
+        );
+      }
+
+      const deletedPledge = await this.db.pledges.delete({
         where: { pledge_code: id },
       });
-      return `Товар ${deletedClient.description} успешно удален`;
+      return `Товар ${deletedPledge.description} успешно удален, и контракты, связанные с ним, также удалены.`;
     }
-    return null;
+
+    throw new NotFoundException(`Товар ${id} не найден.`);
   }
 }

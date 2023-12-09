@@ -53,14 +53,22 @@ export class ClientsService {
   async remove(id: number) {
     const client = await this.db.clients.findUnique({
       where: { client_code: id },
+      include: { contracts: true },
     });
 
     if (client) {
+      if (client.contracts.length > 0) {
+        throw new ConflictException(
+          `Клиент ${client.full_name} имеет активные контракты. Его нельзя удалить. (Сначала удалите контракты связанные с этим клиентом)`,
+        );
+      }
+
       const deletedClient = await this.db.clients.delete({
         where: { client_code: id },
       });
-      return `Клиент ${deletedClient.full_name} успешно удален`;
+      return `Клиент ${deletedClient.full_name} успешно удален, и контракты, связанные с ним, также удалены.`;
     }
-    return null;
+
+    throw new NotFoundException(`Клиент ${id} не найден.`);
   }
 }

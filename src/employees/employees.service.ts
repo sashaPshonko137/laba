@@ -37,10 +37,10 @@ export class EmployeesService {
   }
 
   async findOne(id: number) {
-    const client = await this.db.employees.findFirst({
+    const employer = await this.db.employees.findFirst({
       where: { employee_code: id },
     });
-    return client;
+    return employer;
   }
 
   async update(id: number, body: UpdateEmployeeDto) {
@@ -63,14 +63,22 @@ export class EmployeesService {
   async remove(id: number) {
     const employer = await this.db.employees.findUnique({
       where: { employee_code: id },
+      include: { contracts: true },
     });
 
     if (employer) {
+      if (employer.contracts.length > 0) {
+        throw new ConflictException(
+          `Работодатель ${employer.full_name} имеет активные контракты. Его нельзя удалить. (Сначала удалите контракты связанные с этим работодателем)`,
+        );
+      }
+
       const deletedEmployer = await this.db.employees.delete({
         where: { employee_code: id },
       });
-      return `Работодатель ${deletedEmployer.full_name} успешно удален`;
+      return `Работодатель ${deletedEmployer.full_name} успешно удален, и контракты, связанные с ним, также удалены.`;
     }
-    return null;
+
+    throw new NotFoundException(`Работодатель ${id} не найден.`);
   }
 }
