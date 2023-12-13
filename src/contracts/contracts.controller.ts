@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
@@ -23,8 +24,11 @@ export class ContractsController {
   }
 
   @Get()
-  findAll() {
-    return this.contractsService.findAll();
+  findAll(
+    @Query('startDate') startDate: Date,
+    @Query('endDate') endDate: Date,
+  ) {
+    return this.contractsService.findAll(startDate, endDate);
   }
 
   @Get(':id')

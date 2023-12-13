@@ -7,6 +7,26 @@ import { PrismaService } from 'src/utils/prisma.service';
 export class ContractsService {
   constructor(private db: PrismaService) {}
   async create(body: CreateContractDto) {
+    await Promise.all([
+      this.checkIfExists(
+        'clients',
+        'client_code',
+        body.client_code,
+        'Клиент не найден, контракт не создан',
+      ),
+      this.checkIfExists(
+        'pledges',
+        'pledge_code',
+        body.pledge_code,
+        'Товар не найден, контракт не создан',
+      ),
+      this.checkIfExists(
+        'employees',
+        'employee_code',
+        body.employee_code,
+        'Работодатель не найден, контракт не создан',
+      ),
+    ]);
     const contract = await this.db.contracts.create({
       data: {
         contract_type: body.contract_type,
@@ -22,8 +42,15 @@ export class ContractsService {
     return contract;
   }
 
-  async findAll() {
-    const contracts = await this.db.contracts.findMany();
+  async findAll(startDate: Date, endDate: Date) {
+    const contracts = await this.db.contracts.findMany({
+      where: {
+        creation_date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
     return contracts;
   }
 
@@ -65,5 +92,15 @@ export class ContractsService {
       return `Контракт №${deletedContract.contract_code} успешно удален`;
     }
     return null;
+  }
+  async checkIfExists(model: string, field, value, errorMessage) {
+    const result = await this.db[model].findFirst({
+      where: {
+        [field]: value,
+      },
+    });
+    if (!result) {
+      throw new NotFoundException(errorMessage);
+    }
   }
 }

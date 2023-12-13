@@ -33,10 +33,25 @@ export class ClientsService {
   }
 
   async findOne(id: number) {
-    const client = await this.db.clients.findFirst({
+    const clientWithSum = await this.db.clients.findFirst({
       where: { client_code: id },
+      include: {
+        contracts: {
+          select: {
+            payout_to_client: true,
+          },
+        },
+      },
     });
-    return client;
+
+    if (!clientWithSum) {
+      throw new NotFoundException('Клиент не найден');
+    }
+    const totalPayout = clientWithSum.contracts.reduce(
+      (sum, contract) => sum + (contract.payout_to_client?.toNumber() ?? 0),
+      0,
+    );
+    return { client: clientWithSum, totalPayout };
   }
 
   async update(id: number, body: UpdateClientDto) {
