@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { PrismaService } from 'src/utils/prisma.service';
+import { GeneratePdfService } from 'src/utils/generate-pdf.service';
 
 @Injectable()
 export class ContractsService {
-  constructor(private db: PrismaService) {}
+  constructor(
+    private db: PrismaService,
+    private genPDF: GeneratePdfService,
+  ) {}
   async create(body: CreateContractDto) {
     await Promise.all([
       this.checkIfExists(
@@ -37,12 +41,19 @@ export class ContractsService {
         pledge_code: body.pledge_code,
         employee_code: body.employee_code,
       },
+      include: {
+        clients: true,
+        employees: true,
+        pledges: true,
+      },
     });
+    await this.genPDF.generatePDF(contract);
 
     return contract;
   }
 
   async findAll(startDate: Date, endDate: Date) {
+    console.log(startDate, endDate);
     const contracts = await this.db.contracts.findMany({
       where: {
         creation_date: {
@@ -73,10 +84,16 @@ export class ContractsService {
         pledge_code: body.pledge_code,
         employee_code: body.employee_code,
       },
+      include: {
+        clients: true,
+        employees: true,
+        pledges: true,
+      },
     });
     if (!updatedСontract) {
       throw new NotFoundException('Сontract not found');
     }
+    await this.genPDF.generatePDF(updatedСontract);
     return updatedСontract;
   }
 
