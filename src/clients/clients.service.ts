@@ -28,8 +28,25 @@ export class ClientsService {
   }
 
   async findAll() {
-    const clients = await this.db.clients.findMany();
-    return clients;
+    const clientsWithSums = await this.db.clients.findMany({
+      include: {
+        contracts: {
+          select: {
+            payout_to_client: true,
+          },
+        },
+      },
+    });
+
+    const clientsWithTotalPayouts = clientsWithSums.map((client) => {
+      const totalPayout = client.contracts.reduce(
+        (sum, contract) => sum + (contract.payout_to_client?.toNumber() ?? 0),
+        0,
+      );
+      return { client, totalPayout };
+    });
+
+    return clientsWithTotalPayouts;
   }
 
   async findOne(id: number) {
