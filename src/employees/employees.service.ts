@@ -11,48 +11,37 @@ import { PrismaService } from 'src/utils/prisma.service';
 export class EmployeesService {
   constructor(private db: PrismaService) {}
   async create(body: CreateEmployeeDto) {
-    const checkExistPhoneNumber = await this.db.employees.findFirst({
+    const checkExistPhoneNumber = await this.db.employee.findFirst({
       where: { phone_number: body?.phone_number },
     });
     if (checkExistPhoneNumber) {
-      throw new ConflictException('Unique phone number required');
+      throw new ConflictException(
+        'Для создания сотрудника используйте уникальный номер телефона',
+      );
     }
-
-    const employer = await this.db.employees.create({
-      data: {
-        full_name: body.full_name,
-        address: body.address,
-        birth_date: new Date(body.birth_date),
-        phone_number: body.phone_number,
-        position: body.position,
-      },
+    const employer = await this.db.employee.create({
+      data: { ...body },
     });
 
     return employer;
   }
 
   async findAll() {
-    const employees = await this.db.employees.findMany();
+    const employees = await this.db.employee.findMany();
     return employees;
   }
 
   async findOne(id: number) {
-    const employer = await this.db.employees.findFirst({
+    const employer = await this.db.employee.findFirst({
       where: { employee_code: id },
     });
     return employer;
   }
 
   async update(id: number, body: UpdateEmployeeDto) {
-    const updatedEmployer = await this.db.employees.update({
+    const updatedEmployer = await this.db.employee.update({
       where: { employee_code: id },
-      data: {
-        full_name: body.full_name,
-        address: body.address,
-        birth_date: new Date(body.birth_date),
-        phone_number: body.phone_number,
-        position: body.position,
-      },
+      data: { ...body },
     });
     if (!updatedEmployer) {
       throw new NotFoundException('Employer not found');
@@ -61,22 +50,26 @@ export class EmployeesService {
   }
 
   async remove(id: number) {
-    const employer = await this.db.employees.findUnique({
+    const employer = await this.db.employee.findUnique({
       where: { employee_code: id },
-      include: { contracts: true },
+      include: { contract: true },
     });
 
     if (employer) {
-      if (employer.contracts.length > 0) {
+      if (employer.contract.length > 0) {
         throw new ConflictException(
-          `Работодатель ${employer.full_name} имеет активные контракты. Его нельзя удалить. (Сначала удалите контракты связанные с этим работодателем)`,
+          `Работодатель ${
+            employer.surname + ' ' + employer.name
+          } имеет активные кредиты. Его нельзя удалить. (Сначала удалите контракты связанные с этим работодателем)`,
         );
       }
 
-      const deletedEmployer = await this.db.employees.delete({
+      const deletedEmployer = await this.db.employee.delete({
         where: { employee_code: id },
       });
-      return `Работодатель ${deletedEmployer.full_name} успешно удален, и контракты, связанные с ним, также удалены.`;
+      return `Работодатель ${
+        deletedEmployer.surname + ' ' + deletedEmployer.name
+      } успешно удален, и контракты, связанные с ним, также удалены.`;
     }
 
     throw new NotFoundException(`Работодатель ${id} не найден.`);
