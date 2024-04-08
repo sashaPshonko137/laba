@@ -155,4 +155,26 @@ export class ContractsService {
       throw new BadRequestException('Неверные значения для договора');
     }
   }
+
+  async findAllMin(payoutAmount: number) {
+    const contracts = await this.db.contract.findMany({
+      where: {
+        monthly_payment: {
+          lte: payoutAmount,
+        },
+      },
+    });
+    return contracts;
+  }
+
+  async findAllMax(payoutAmount: number) {
+    const contracts = await this.db.contract.findMany({
+      where: {
+        monthly_payment: {
+          gte: payoutAmount,
+        },
+      },
+    });
+    return contracts;
+  }
 }
